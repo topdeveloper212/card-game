@@ -158,9 +158,8 @@
   <main id="game"></main>
   <div class="modal" id="modal"></div>
 
-  <audio id="eraseSound" src="https://cdn.pixabay.com/download/audio/2022/03/15/audio_275f0eacdc.mp3?filename=erase-glass-127198.mp3"></audio>
-  <audio id="successSound" src="https://cdn.pixabay.com/download/audio/2021/09/14/audio_faaea97913.mp3?filename=success-1-6297.mp3"></audio>
-  <audio id="bgm" src="https://cdn.pixabay.com/download/audio/2022/03/01/audio_34f7029f07.mp3?filename=chill-ambient-110875.mp3" autoplay loop></audio>
+  <audio id="eraseSound" src="failure.mp3"></audio>
+  <audio id="successSound" src="success.mp3"></audio>
 
   <script>
     const words = [
@@ -232,13 +231,13 @@
             erased++;
             erasers--;
             span.classList.add('hidden');
-            eraseSound.play();
+            successSound.play();
 
             if (erasers <= 0) {
               const remaining = [...game.querySelectorAll('.letter')]
                 .filter(el => !el.classList.contains('hidden'))
                 .map(el => el.textContent).join('');
-              if (isAnagram(remaining, word)) {
+              if (isAnagram(remaining, word)) { 
                 score += 10;
                 updateStatus();
                 successSound.play();
@@ -280,6 +279,7 @@
         return;
       }
       wrongCount++;
+      eraseSound.play();
       showModal('💀 Wrong Click 💀');
     }
 
