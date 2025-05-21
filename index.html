@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Word Eraser Game</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Rubik:wght@400;700&display=swap');
+
+    * {
+      box-sizing: border-box;
+      font-family: 'Rubik', sans-serif;
+    }
+    body {
+      margin: 0;
+      background: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
+      color: #ffffff;
+      overflow: hidden;
+      animation: bgShift 20s infinite alternate ease-in-out;
+    }
+
+    @keyframes bgShift {
+      0% {
+        background-position: 0% 50%;
+      }
+      100% {
+        background-position: 100% 50%;
+      }
+    }
+
+    header {
+      display: flex;
+      justify-content: space-between;
+      padding: 1rem 2rem;
+      background: rgba(0, 0, 0, 0.4);
+      backdrop-filter: blur(10px);
+      box-shadow: 0 0 10px rgba(255, 255, 255, 0.2);
+    }
+
+    .status span {
+      margin-right: 1.5rem;
+      font-size: 1.1rem;
+      text-shadow: 1px 1px 4px #00ffe5;
+    }
+
+    .btns button {
+      margin-left: 0.5rem;
+      padding: 0.5rem 1.2rem;
+      border: none;
+      background: linear-gradient(45deg, #ff00cc, #3333ff);
+      color: white;
+      border-radius: 10px;
+      cursor: pointer;
+      font-weight: bold;
+      transition: 0.3s ease;
+      box-shadow: 0 0 10px rgba(255, 255, 255, 0.1);
+    }
+
+    .btns button:hover {
+      transform: scale(1.1);
+      box-shadow: 0 0 15px #ffffffaa;
+    }
+
+    main {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      align-items: center;
+      height: 80vh;
+      gap: 1rem;
+      padding: 2rem;
+    }
+
+    .letter {
+      font-size: 2.2rem;
+      padding: 1rem 1.6rem;
+      background: rgba(255, 255, 255, 0.15);
+      border: 2px solid #ffffff;
+      border-radius: 12px;
+      cursor: pointer;
+      transition: all 0.3s ease-in-out;
+      position: relative;
+      color: #ffffff;
+      text-shadow: 0 0 5px #ffffff;
+      box-shadow: 0 0 10px #ffffff30;
+    }
+
+    .letter:hover {
+      background: rgba(255, 255, 255, 0.1);
+      transform: scale(1.1);
+      box-shadow: 0 0 15px #ffffffaa;
+    }
+
+    .hidden {
+      opacity: 0;
+      transform: scale(0) rotate(360deg);
+      transition: all 0.5s ease-in-out;
+    }
+
+    .modal {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: linear-gradient(135deg, #111, #333);
+      color: #fff;
+      padding: 2rem 3rem;
+      border-radius: 16px;
+      text-align: center;
+      z-index: 1000;
+      display: none;
+      box-shadow: 0 0 25px rgba(255, 255, 255, 0.1);
+      font-size: 1.5rem;
+      animation: popupFade 0.3s ease-out;
+    }
+
+    .modal.active {
+      display: block;
+      animation: modalGlow 0.8s ease-in-out alternate infinite;
+    }
+
+    @keyframes modalGlow {
+      0% {
+        box-shadow: 0 0 10px transparent, 0 0 10px transparent;
+      }
+      100% {
+        box-shadow: 0 0 20px transparent, 0 0 20px transparent;
+      }
+    }
+
+    @keyframes popupFade {
+      from {
+        transform: translate(-50%, -60%);
+        opacity: 0;
+      }
+      to {
+        transform: translate(-50%, -50%);
+        opacity: 1;
+      }
+    }
+
+    audio {
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="status">
+      <span id="spinStatus">0 spins</span>
+      <span id="scoreStatus">0 points</span>
+    </div>
+    <div class="btns">
+      <button onclick="showAnswer()">See Answer (-20)</button>
+      <button onclick="nextSpin(true)">Next Spin (-30)</button>
+    </div>
+  </header>
+  <main id="game"></main>
+  <div class="modal" id="modal"></div>
+
+  <audio id="eraseSound" src="https://cdn.pixabay.com/download/audio/2022/03/15/audio_275f0eacdc.mp3?filename=erase-glass-127198.mp3"></audio>
+  <audio id="successSound" src="https://cdn.pixabay.com/download/audio/2021/09/14/audio_faaea97913.mp3?filename=success-1-6297.mp3"></audio>
+  <audio id="bgm" src="https://cdn.pixabay.com/download/audio/2022/03/01/audio_34f7029f07.mp3?filename=chill-ambient-110875.mp3" autoplay loop></audio>
+
+  <script>
+    const words = [
+      { word: 'cat', pool: 'ecxazt' },
+      { word: 'cake', pool: 'clackpey' }, 
+      { word: 'milk', pool: 'emwqieeldk' },
+      { word: 'school', pool: 'srchwowrole' },
+      { word: 'birthday', pool: 'qbirwthdeeady' },
+    ];
+
+    let round = 0;
+    let score = 50;
+    let spin = 0;
+    let wrongCount = 0;
+    const modal = document.getElementById('modal');
+
+    const eraseSound = document.getElementById('eraseSound');
+    const successSound = document.getElementById('successSound');
+
+    function updateStatus() {
+      document.getElementById('scoreStatus').innerText = `${score} points`;
+      document.getElementById('spinStatus').innerText = `${spin} spins`;
+    }
+
+    function showAnswer() {
+      if (score < 20) return endGame();
+      score -= 20;
+      alert(`Answer: ${words[round].word}`);
+      updateStatus();
+    }
+
+    function nextSpin(force = false) {
+      wrongCount = 0;
+      if (force && score < 30) return endGame();
+      if (force) score -= 30;
+      round = (round + 1) % words.length;
+      setupGame();
+    }
+
+    function showModal(text) {
+      modal.textContent = text;
+      modal.classList.add('active');
+      setTimeout(() => modal.classList.remove('active'), 2000);
+    }
+
+    function setupGame() {
+      spin++;
+      updateStatus();
+
+      const game = document.getElementById('game');
+      game.innerHTML = '';
+
+      const { word, pool } = words[round];
+      const letters = pool.toLowerCase().split('').sort(() => 0.5 - Math.random());
+
+      let erasers = (pool.length - word.length);
+      let erased = 0;
+
+      letters.forEach((letter, index) => {
+        const span = document.createElement('span');
+        span.classList.add('letter');
+        span.textContent = letter;
+        span.addEventListener('click', () => {
+          if (!span.classList.contains('hidden')) {
+            if (word.includes(letter) && [...game.querySelectorAll('.letter')].filter(el => !el.classList.contains('hidden') && el.textContent === letter).length <= [...word].filter(c => c === letter).length) {
+              wrongKey();
+              return; 
+            }
+            erased++;
+            erasers--;
+            span.classList.add('hidden');
+            eraseSound.play();
+
+            if (erasers <= 0) {
+              const remaining = [...game.querySelectorAll('.letter')]
+                .filter(el => !el.classList.contains('hidden'))
+                .map(el => el.textContent).join('');
+              if (isAnagram(remaining, word)) {
+                score += 10;
+                updateStatus();
+                successSound.play();
+                showModal(`Turn ${spin} Success!`);
+                if (spin >= 5) {
+                  showModal('🎉 Game Success! 🎉');
+                  score = 50;
+                  spin = 0;
+                  round = 0;
+                  setTimeout(() => window.location.href = window.location.href, 3000);
+                }
+                setTimeout(() => nextSpin(), 1000)
+              } else {
+                showModal('Turn Failed!');
+              }
+            }
+          }
+        });
+        game.appendChild(span);
+      });
+    }
+
+    function isAnagram(str1, str2) {
+      return str1.split('').sort().join('') === str2.split('').sort().join('');
+    }
+
+    function endGame() {
+      score = 50;
+      spin = 0;
+      round = 0;
+      showModal('💀 Game Over 💀');
+      setupGame();
+    }
+
+    function wrongKey() {
+      if (wrongCount == 3) {
+        endGame();
+        wrongCount = 0;
+        return;
+      }
+      wrongCount++;
+      showModal('💀 Wrong Click 💀');
+    }
+
+    setupGame();
+  </script>
+</body>
+</html>
